@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.72"
+axum = { version = "0.6.20", features = ["headers", "macros"] }
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread", "signal"] }
