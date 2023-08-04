@@ -1,3 +1,5 @@
+mod db;
+
 use axum::{response::Html, routing::get, Router};
 use std::net::SocketAddr;
 use tokio::signal;

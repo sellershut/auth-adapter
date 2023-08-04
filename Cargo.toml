@@ -8,4 +8,12 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.72"
 axum = { version = "0.6.20", features = ["headers", "macros"] }
+dotenvy = "0.15.7"
+sea-orm = { version = "0.12.1", features = ["runtime-tokio-rustls", "postgres-array", "sqlx-postgres"] }
+serde = { version = "1.0.181", features = ["derive"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread", "signal"] }
+entities = { version = "0.1.0", path = "entities" }
+
+[workspace]
+members = ["migration", "entities"]
+
