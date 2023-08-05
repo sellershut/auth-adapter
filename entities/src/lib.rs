@@ -6,3 +6,5 @@ pub mod account;
 pub mod session;
 pub mod user;
 pub mod verification_token;
+
+pub use utoipa;
