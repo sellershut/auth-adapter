@@ -8,8 +8,7 @@ use axum::{
     Json,
 };
 use entities::{user, utoipa};
-
-use crate::db::AuthAdapter;
+use sea_orm::{ActiveModelTrait, DatabaseConnection};
 
 /// Create new User
 ///
@@ -24,13 +23,18 @@ use crate::db::AuthAdapter;
 )]
 #[debug_handler]
 pub async fn create_user(
-    State(state): State<Arc<AuthAdapter>>,
+    State(state): State<Arc<DatabaseConnection>>,
     Json(payload): Json<user::Model>,
 ) -> impl IntoResponse {
-    (StatusCode::CREATED, Json(payload))
+    let item: user::ActiveModel = payload.into();
+    if let Err(e) = item.insert(&*state).await {
+        eprintln!("{e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::CREATED
+    }
 }
 
-#[debug_handler]
-pub async fn get_user(State(state): State<Arc<AuthAdapter>>) -> Html<&'static str> {
+pub async fn get_user(State(state): State<Arc<DatabaseConnection>>) -> Html<&'static str> {
     Html("<h1>Hello, World!</h1>")
 }

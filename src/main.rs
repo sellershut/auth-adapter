@@ -1,20 +1,20 @@
-mod db;
 mod open_api;
 mod routes;
 
 use axum::{routing::post, Router};
 use entities::utoipa::OpenApi;
+use sea_orm::Database;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::signal;
 
-use crate::{db::AuthAdapter, open_api::ApiDoc};
+use crate::open_api::ApiDoc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     let db_url = std::env::var("DATABASE_URL").expect("missing db url in env");
-    let adapter = AuthAdapter::new(&db_url).await?;
-    let adapter = Arc::new(adapter);
+    let conn = Database::connect(&db_url).await?;
+    let adapter = Arc::new(conn);
 
     let app = Router::new()
         .merge(
