@@ -1,7 +1,14 @@
 use anyhow::Result;
 use sea_orm::{Database, DatabaseConnection};
 
-async fn hello() -> Result<DatabaseConnection> {
-    let conn = Database::connect("hello").await?;
-    Ok(conn)
+#[derive(Debug)]
+pub struct AuthAdapter {
+    conn: DatabaseConnection,
+}
+
+impl AuthAdapter {
+    pub async fn new(connection: &str) -> Result<Self> {
+        let conn = Database::connect(connection).await?;
+        Ok(Self { conn })
+    }
 }

@@ -1,24 +1,40 @@
 mod db;
+mod open_api;
+mod routes;
 
-use axum::{response::Html, routing::get, Router};
-use std::net::SocketAddr;
+use axum::{routing::post, Router};
+use entities::utoipa::OpenApi;
+use std::{net::SocketAddr, sync::Arc};
 use tokio::signal;
+
+use crate::{db::AuthAdapter, open_api::ApiDoc};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let app = Router::new().route("/", get(handler));
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("missing db url in env");
+    let adapter = AuthAdapter::new(&db_url).await?;
+    let adapter = Arc::new(adapter);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let app = Router::new()
+        .merge(
+            utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
+                .url("/api-doc/openapi.json", ApiDoc::openapi()),
+        )
+        .route(
+            "/users",
+            post(routes::create_user)
+                .get(routes::get_user)
+                .with_state(adapter),
+        );
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
-}
-
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
 }
 
 async fn shutdown_signal() {

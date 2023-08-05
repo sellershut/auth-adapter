@@ -13,7 +13,8 @@ sea-orm = { version = "0.12.1", features = ["runtime-tokio-rustls", "postgres-ar
 serde = { version = "1.0.181", features = ["derive"] }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread", "signal"] }
 entities = { version = "0.1.0", path = "entities" }
+utoipa-swagger-ui = { version = "3.1.4", features = ["axum"] }
+serde_json = "1.0.104"
 
 [workspace]
 members = ["migration", "entities"]
-
