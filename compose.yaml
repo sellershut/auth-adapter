@@ -1,0 +1,20 @@
+services:
+  auth-db:
+    container_name: auth-db
+    restart: always
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: ${AUTH_PGDATA}
+    volumes:
+       - pgdata:${AUTH_PGDATA}
+
+  auth-adapter:
+    container_name: auth-server
+    restart: always
+    build: .
+    depends_on:
+      - auth-db
+
+volumes:
+  pgdata:
