@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     debug_handler,
@@ -9,11 +9,11 @@ use axum::{
 };
 use entities::{
     account, user,
+    user::Model as User,
     utoipa::{self, IntoParams, ToSchema},
 };
 use sea_orm::{
-    prelude::DateTimeWithTimeZone, ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection,
-    EntityTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,7 @@ pub async fn create_user(
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum User {
+pub enum UserResult {
     Single(user::Model),
     Multiple(Vec<user::Model>),
 }
@@ -76,12 +76,12 @@ pub enum User {
 pub async fn get_users(
     State(state): State<Arc<DatabaseConnection>>,
     Query(params): Query<UserSearchQuery>,
-) -> Result<Json<User>, StatusCode> {
+) -> Result<Json<UserResult>, StatusCode> {
     if let Some(id) = params.id {
         match user::Entity::find_by_id(id).one(&*state).await {
             Ok(users) => {
                 if let Some(user) = users {
-                    return Ok(Json(User::Single(user)));
+                    return Ok(Json(UserResult::Single(user)));
                 } else {
                     return Err(StatusCode::NO_CONTENT);
                 }
@@ -99,7 +99,7 @@ pub async fn get_users(
         {
             Ok(item) => {
                 if let Some(user) = item {
-                    return Ok(Json(User::Single(user)));
+                    return Ok(Json(UserResult::Single(user)));
                 } else {
                     return Err(StatusCode::NO_CONTENT);
                 }
@@ -124,7 +124,7 @@ pub async fn get_users(
         {
             Ok(result) => {
                 if let Some((_, users)) = result.first() {
-                    return Ok(Json(User::Multiple(users.to_owned())));
+                    return Ok(Json(UserResult::Multiple(users.to_owned())));
                 } else {
                     return Err(StatusCode::NO_CONTENT);
                 }
@@ -143,7 +143,7 @@ pub async fn get_users(
         {
             Ok(result) => {
                 if let Some((_, users)) = result.first() {
-                    return Ok(Json(User::Multiple(users.to_owned())));
+                    return Ok(Json(UserResult::Multiple(users.to_owned())));
                 } else {
                     return Err(StatusCode::NO_CONTENT);
                 }
@@ -162,7 +162,7 @@ pub async fn get_users(
         {
             Ok(result) => {
                 if let Some((_, users)) = result.first() {
-                    return Ok(Json(User::Multiple(users.to_owned())));
+                    return Ok(Json(UserResult::Multiple(users.to_owned())));
                 } else {
                     return Err(StatusCode::NO_CONTENT);
                 }
@@ -174,7 +174,7 @@ pub async fn get_users(
         }
     }
     match user::Entity::find().all(&*state).await {
-        Ok(users) => Ok(Json(User::Multiple(users))),
+        Ok(users) => Ok(Json(UserResult::Multiple(users))),
         Err(e) => {
             eprintln!("{e}");
             Err(StatusCode::NO_CONTENT)
@@ -182,46 +182,54 @@ pub async fn get_users(
     }
 }
 
-#[derive(Deserialize, Serialize, ToSchema)]
-pub struct UserData {
-    pub name: Option<String>,
-    pub email: Option<String>,
-    #[schema(value_type = String, format = DateTime, nullable)]
-    pub email_verified: Option<DateTimeWithTimeZone>,
-    pub image: Option<String>,
-}
-
-/// Update a user by given id. Return only status 200 on success or 404 if `User` is not found.
+/// Update a user by given id.
 #[utoipa::path(
     put,
     path = "/users",
     responses(
         (status = 200, description = "User updated successfully"),
-        (status = 404, description = "User not found")
+        (status = 404, description = "User not found"),
+        (status = 422, description = "User id not provided"),
+        (status = 500, description = "Could not update user")
     ),
     params(
-        ("id" = String, Path, description = "User id")
+        ("id" = String, Query, description = "User Id")
     ),
+    request_body(content = Model, content_type = "application/x-www-form-urlencoded")
 )]
 pub async fn update_user(
     State(state): State<Arc<DatabaseConnection>>,
-    Query(id): Query<String>,
-    Form(form): Form<UserData>,
-) {
-    if let Ok(Some(user)) = user::Entity::find_by_id(id).one(&*state).await {
-        let mut user: user::ActiveModel = user.into();
-        if let Some(name) = form.name {
-            user.name = Set(Some(name));
+    Query(query): Query<HashMap<String, String>>,
+    Form(form): Form<User>,
+) -> impl IntoResponse {
+    println!("{query:#?}");
+    if let Some(id) = query.get("id") {
+        if let Ok(Some(user)) = user::Entity::find_by_id(id).one(&*state).await {
+            let mut user: user::ActiveModel = user.into();
+            if let Some(name) = form.name {
+                user.name = Set(Some(name));
+            }
+            if let Some(email) = form.email {
+                user.email = Set(Some(email));
+            }
+            if let Some(email_verified) = form.email_verified {
+                user.email_verified = Set(Some(email_verified));
+            }
+            if let Some(image) = form.image {
+                user.image = Set(Some(image));
+            }
+            if let Err(e) = user.update(&*state).await {
+                eprintln!("{e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            } else {
+                StatusCode::OK
+            }
+        } else {
+            StatusCode::NOT_FOUND
         }
-        if let Some(email) = form.email {
-            user.email = Set(Some(email));
-        }
-        if let Some(email_verified) = form.email_verified {
-            user.email_verified = Set(Some(email_verified));
-        }
-        if let Some(image) = form.image {
-            user.image = Set(Some(image));
-        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
     }
 }
 
