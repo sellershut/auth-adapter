@@ -15,7 +15,7 @@ pub struct Model {
     pub identifier: String,
     #[sea_orm(column_type = "Text")]
     pub token: String,
-    pub expires: DateTimeUtc,
+    pub expires: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
