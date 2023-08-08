@@ -1,7 +1,10 @@
 mod open_api;
 mod routes;
 
-use axum::{routing::post, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use entities::utoipa::OpenApi;
 use sea_orm::Database;
 use std::{net::SocketAddr, sync::Arc};
@@ -21,12 +24,14 @@ async fn main() -> anyhow::Result<()> {
             utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
                 .url("/api-doc/openapi.json", ApiDoc::openapi()),
         )
+        .route("/health", get(routes::health))
         .route(
             "/users",
             post(routes::create_user)
-                .get(routes::get_user)
-                .with_state(adapter),
-        );
+                .get(routes::get_users)
+                .put(routes::update_user),
+        )
+        .with_state(adapter);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
     println!("listening on {}", addr);

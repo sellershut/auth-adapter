@@ -6,8 +6,10 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: ${AUTH_PGDATA}
+    ports:
+      - 5432:5432
     volumes:
-       - pgdata:${AUTH_PGDATA}
+      - pgdata:${AUTH_PGDATA}
 
   auth-adapter:
     container_name: auth-server
