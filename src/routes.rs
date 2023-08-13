@@ -13,7 +13,7 @@ use entities::{
     utoipa::{self, IntoParams, ToSchema},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, Set, ModelTrait,
 };
 use serde::{Deserialize, Serialize};
 
@@ -224,6 +224,40 @@ pub async fn update_user(
             } else {
                 StatusCode::OK
             }
+        } else {
+            StatusCode::NOT_FOUND
+        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
+    }
+}
+
+/// Update a user by given id.
+#[utoipa::path(
+    delete,
+    path = "/users",
+    responses(
+        (status = 200, description = "User deleted successfully"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "User id not provided"),
+        (status = 500, description = "Could not delete user")
+    ),
+    params(
+        ("id" = String, Query, description = "User Id")
+    ),
+)]
+pub async fn delete_user(
+    State(state): State<Arc<DatabaseConnection>>,
+    Query(query): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(id) = query.get("id") {
+        if let Ok(Some(user)) = user::Entity::find_by_id(id).one(&*state).await {
+            if let Err(e) = user.delete(&*state).await {
+                eprintln!("{e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::OK
         } else {
             StatusCode::NOT_FOUND
         }

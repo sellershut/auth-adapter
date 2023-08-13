@@ -29,6 +29,7 @@ async fn main() -> anyhow::Result<()> {
             "/users",
             post(routes::create_user)
                 .get(routes::get_users)
+                .delete(routes::delete_user)
                 .put(routes::update_user),
         )
         .with_state(adapter);
