@@ -10,7 +10,7 @@ use axum::{
 use entities::{
     account, user,
     user::Model as User,
-    utoipa::{self, IntoParams, ToSchema},
+    utoipa::{self, IntoParams, ToSchema}, session,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
@@ -332,5 +332,28 @@ pub async fn delete_account(
     } else {
         eprintln!("No parameters provided");
         StatusCode::UNPROCESSABLE_ENTITY
+    }
+}
+
+/// Create new Account
+#[utoipa::path(
+        post,
+        path = "/session",
+        request_body = Model,
+        responses(
+            (status = 201, description = "Session created successfully", body = Model),
+        )
+)]
+#[debug_handler]
+pub async fn create_session(
+    State(state): State<Arc<DatabaseConnection>>,
+    Json(payload): Json<session::Model>,
+) -> impl IntoResponse {
+    let item: session::ActiveModel = payload.into();
+    if let Err(e) = item.insert(&*state).await {
+        eprintln!("{e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::CREATED
     }
 }
