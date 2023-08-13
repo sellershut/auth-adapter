@@ -8,9 +8,9 @@ use axum::{
     Form, Json,
 };
 use entities::{
-    account, user,
+    account, session, user,
     user::Model as User,
-    utoipa::{self, IntoParams, ToSchema}, session,
+    utoipa::{self, IntoParams, ToSchema},
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
@@ -314,7 +314,10 @@ pub async fn delete_account(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    if let Some(Some((id,name))) = query.get("id").map(|id| query.get("name").map(|name| (id, name))) {
+    if let Some(Some((id, name))) = query
+        .get("id")
+        .map(|id| query.get("name").map(|name| (id, name)))
+    {
         if let Ok(Some(account)) = account::Entity::find()
             .filter(account::Column::ProviderAccountId.eq(id))
             .filter(account::Column::Provider.eq(name))
@@ -335,7 +338,7 @@ pub async fn delete_account(
     }
 }
 
-/// Create new Account
+/// Create new Session
 #[utoipa::path(
         post,
         path = "/session",
@@ -355,5 +358,52 @@ pub async fn create_session(
         StatusCode::INTERNAL_SERVER_ERROR
     } else {
         StatusCode::CREATED
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct UserAndSession {
+    pub user: user::Model,
+    pub session: session::Model,
+}
+
+/// Get user and session by given session token.
+#[utoipa::path(
+    get,
+    path = "/session-user",
+    responses(
+        (status = 200, description = "Session and user found"),
+        (status = 422, description = "SessionToken not provided"),
+        (status = 500, description = "Could not get session and user")
+    ),
+    params(
+        ("sessionToken" = String, Query, description = "Session Token")
+    ),
+)]
+#[debug_handler]
+pub async fn get_session_and_user(
+    Query(query): Query<HashMap<String, String>>,
+    State(state): State<Arc<DatabaseConnection>>,
+) -> Result<Json<UserAndSession>, StatusCode> {
+    if let Some(id) = query.get("sessionToken") {
+        if let Ok(Some(session)) = session::Entity::find()
+            .filter(session::Column::SessionToken.eq(id))
+            .one(&*state)
+            .await
+        {
+            if let Ok(Some(user)) = user::Entity::find_by_id(&session.user_id)
+                .one(&*state)
+                .await
+            {
+                Ok(Json(UserAndSession { user, session }))
+            } else {
+                Err(StatusCode::NO_CONTENT)
+            }
+        } else {
+            Err(StatusCode::NO_CONTENT)
+        }
+    } else {
+        eprintln!("No parameters provided");
+        Err(StatusCode::UNPROCESSABLE_ENTITY)
     }
 }
