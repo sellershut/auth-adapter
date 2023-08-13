@@ -38,7 +38,14 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/session",
-            post(routes::create_session).put(routes::update_session),
+            post(routes::create_session)
+                .put(routes::update_session)
+                .delete(routes::delete_session),
+        )
+        .route(
+            "/verification-token",
+            post(routes::create_verif_token)
+                .delete(routes::delete_verif_token),
         )
         .route("/session-user", get(routes::get_session_and_user))
         .with_state(adapter);

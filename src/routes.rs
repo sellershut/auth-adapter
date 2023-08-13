@@ -13,6 +13,7 @@ use entities::{
     user,
     user::Model as User,
     utoipa::{self, IntoParams, ToSchema},
+    verification_token,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
@@ -236,7 +237,7 @@ pub async fn update_user(
     }
 }
 
-/// Update a user by given id.
+/// Delete a user by given id.
 #[utoipa::path(
     delete,
     path = "/users",
@@ -297,7 +298,7 @@ pub async fn create_account(
     }
 }
 
-/// Update a user by given id.
+/// Delete an account
 #[utoipa::path(
     delete,
     path = "/accounts",
@@ -436,7 +437,7 @@ pub async fn update_session(
             let mut session: session::ActiveModel = session.into();
             session.id = Set(form.id);
             session.user_id = Set(form.user_id);
-            session.expires= Set(form.expires);
+            session.expires = Set(form.expires);
             session.session_token = Set(form.session_token);
             if let Err(e) = session.update(&*state).await {
                 eprintln!("{e}");
@@ -444,6 +445,105 @@ pub async fn update_session(
             } else {
                 StatusCode::OK
             }
+        } else {
+            StatusCode::NOT_FOUND
+        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
+    }
+}
+
+/// Delete a session by given token.
+#[utoipa::path(
+    delete,
+    path = "/session",
+    responses(
+        (status = 200, description = "Session deleted successfully"),
+        (status = 404, description = "Session not found"),
+        (status = 422, description = "Session id not provided"),
+        (status = 500, description = "Could not delete session")
+    ),
+    params(
+        ("sessionToken" = String, Query, description = "Session Token")
+    ),
+)]
+pub async fn delete_session(
+    State(state): State<Arc<DatabaseConnection>>,
+    Query(query): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(id) = query.get("sessionToken") {
+        if let Ok(Some(session)) = session::Entity::find()
+            .filter(session::Column::SessionToken.eq(id))
+            .one(&*state)
+            .await
+        {
+            if let Err(e) = session.delete(&*state).await {
+                eprintln!("{e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::OK
+        } else {
+            StatusCode::NOT_FOUND
+        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
+    }
+}
+
+/// Create new Session
+#[utoipa::path(
+        post,
+        path = "/verification-token",
+        request_body = Model,
+        responses(
+            (status = 201, description = "Verification Token created successfully", body = Model),
+        )
+)]
+#[debug_handler]
+pub async fn create_verif_token(
+    State(state): State<Arc<DatabaseConnection>>,
+    Json(payload): Json<verification_token::Model>,
+) -> impl IntoResponse {
+    let item: verification_token::ActiveModel = payload.into();
+    if let Err(e) = item.insert(&*state).await {
+        eprintln!("{e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::CREATED
+    }
+}
+
+/// Delete a verification token by given id.
+#[utoipa::path(
+    delete,
+    path = "/verification-token",
+    responses(
+        (status = 200, description = "Verification Token deleted successfully"),
+        (status = 404, description = "Verification Token not found"),
+        (status = 422, description = "Verification Token id not provided"),
+        (status = 500, description = "Could not delete verification token")
+    ),
+    params(
+        ("id" = String, Query, description = "Verification Token Id")
+    ),
+)]
+pub async fn delete_verif_token(
+    State(state): State<Arc<DatabaseConnection>>,
+    Query(query): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(id) = query.get("id") {
+        if let Ok(Some(verif_token)) = verification_token::Entity::find()
+            .filter(verification_token::Column::Identifier.eq(id))
+            .one(&*state)
+            .await
+        {
+            if let Err(e) = verif_token.delete(&*state).await {
+                eprintln!("{e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::OK
         } else {
             StatusCode::NOT_FOUND
         }
