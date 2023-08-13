@@ -13,7 +13,8 @@ use entities::{
     utoipa::{self, IntoParams, ToSchema},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, Set, ModelTrait,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
+    QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
 
@@ -269,4 +270,67 @@ pub async fn delete_user(
 
 pub async fn health() -> &'static str {
     "hello"
+}
+
+/// Create new Account
+#[utoipa::path(
+        post,
+        path = "/accounts",
+        request_body = Model,
+        responses(
+            (status = 201, description = "Account created successfully", body = Model),
+        )
+)]
+#[debug_handler]
+pub async fn create_account(
+    State(state): State<Arc<DatabaseConnection>>,
+    Json(payload): Json<account::Model>,
+) -> impl IntoResponse {
+    let item: account::ActiveModel = payload.into();
+    if let Err(e) = item.insert(&*state).await {
+        eprintln!("{e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::CREATED
+    }
+}
+
+/// Update a user by given id.
+#[utoipa::path(
+    delete,
+    path = "/accounts",
+    responses(
+        (status = 200, description = "Account deleted successfully"),
+        (status = 404, description = "Account not found"),
+        (status = 422, description = "Account provider id not provided"),
+        (status = 500, description = "Could not delete user")
+    ),
+    params(
+        ("name" = String, Query, description = "Provider name"),
+        ("id" = String, Query, description = "provider Account Id")
+    ),
+)]
+pub async fn delete_account(
+    State(state): State<Arc<DatabaseConnection>>,
+    Query(query): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(Some((id,name))) = query.get("id").map(|id| query.get("name").map(|name| (id, name))) {
+        if let Ok(Some(account)) = account::Entity::find()
+            .filter(account::Column::ProviderAccountId.eq(id))
+            .filter(account::Column::Provider.eq(name))
+            .one(&*state)
+            .await
+        {
+            if let Err(e) = account.delete(&*state).await {
+                eprintln!("{e}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            StatusCode::OK
+        } else {
+            StatusCode::NOT_FOUND
+        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
+    }
 }

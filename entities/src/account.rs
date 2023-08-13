@@ -2,10 +2,19 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 #[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, DeriveEntityModel, Eq, Default, ToSchema,
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    PartialEq,
+    DeriveEntityModel,
+    Eq,
+    Default,
+    ToSchema,
+    IntoParams,
 )]
 #[sea_orm(table_name = "Account")]
 pub struct Model {

@@ -32,6 +32,10 @@ async fn main() -> anyhow::Result<()> {
                 .delete(routes::delete_user)
                 .put(routes::update_user),
         )
+        .route(
+            "/accounts",
+            post(routes::create_account).delete(routes::delete_account),
+        )
         .with_state(adapter);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 4000));
