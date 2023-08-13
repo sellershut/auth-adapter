@@ -8,7 +8,9 @@ use axum::{
     Form, Json,
 };
 use entities::{
-    account, session, user,
+    account, session,
+    session::Model as Session,
+    user,
     user::Model as User,
     utoipa::{self, IntoParams, ToSchema},
 };
@@ -405,5 +407,48 @@ pub async fn get_session_and_user(
     } else {
         eprintln!("No parameters provided");
         Err(StatusCode::UNPROCESSABLE_ENTITY)
+    }
+}
+
+/// Update a user by given id.
+#[utoipa::path(
+    put,
+    path = "/session",
+    responses(
+        (status = 200, description = "Session updated successfully"),
+        (status = 404, description = "Session not found"),
+        (status = 422, description = "Session Token not provided"),
+        (status = 500, description = "Could not update session")
+    ),
+    params(
+        ("sessionToken" = String, Query, description = "Session Token")
+    ),
+    request_body(content = Model, content_type = "application/x-www-form-urlencoded")
+)]
+pub async fn update_session(
+    State(state): State<Arc<DatabaseConnection>>,
+    Query(query): Query<HashMap<String, String>>,
+    Form(form): Form<Session>,
+) -> impl IntoResponse {
+    println!("{query:#?}");
+    if let Some(id) = query.get("id") {
+        if let Ok(Some(session)) = session::Entity::find_by_id(id).one(&*state).await {
+            let mut session: session::ActiveModel = session.into();
+            session.id = Set(form.id);
+            session.user_id = Set(form.user_id);
+            session.expires= Set(form.expires);
+            session.session_token = Set(form.session_token);
+            if let Err(e) = session.update(&*state).await {
+                eprintln!("{e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            } else {
+                StatusCode::OK
+            }
+        } else {
+            StatusCode::NOT_FOUND
+        }
+    } else {
+        eprintln!("No parameters provided");
+        StatusCode::UNPROCESSABLE_ENTITY
     }
 }

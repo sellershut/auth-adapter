@@ -36,7 +36,10 @@ async fn main() -> anyhow::Result<()> {
             "/accounts",
             post(routes::create_account).delete(routes::delete_account),
         )
-        .route("/session", post(routes::create_session))
+        .route(
+            "/session",
+            post(routes::create_session).put(routes::update_session),
+        )
         .route("/session-user", get(routes::get_session_and_user))
         .with_state(adapter);
 
