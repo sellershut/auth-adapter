@@ -532,23 +532,24 @@ pub async fn create_verif_token(
 pub async fn delete_verif_token(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
+) -> Result<Json<verification_token::Model>, StatusCode> {
     if let Some(id) = query.get("id") {
         if let Ok(Some(verif_token)) = verification_token::Entity::find()
             .filter(verification_token::Column::Identifier.eq(id))
             .one(&*state)
             .await
         {
+            let return_value = verif_token.clone();
             if let Err(e) = verif_token.delete(&*state).await {
                 eprintln!("{e}");
-                return StatusCode::INTERNAL_SERVER_ERROR;
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
-            StatusCode::OK
+            Ok(Json(return_value))
         } else {
-            StatusCode::NOT_FOUND
+            Err(StatusCode::NOT_FOUND)
         }
     } else {
         eprintln!("No parameters provided");
-        StatusCode::UNPROCESSABLE_ENTITY
+        Err(StatusCode::UNPROCESSABLE_ENTITY)
     }
 }
