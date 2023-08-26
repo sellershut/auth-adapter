@@ -2,7 +2,6 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 #[derive(
     Clone,
@@ -11,14 +10,10 @@ use utoipa::{IntoParams, ToSchema};
     PartialEq,
     DeriveEntityModel,
     Eq,
-    ToSchema,
     Deserialize,
     Serialize,
-    IntoParams,
 )]
 #[sea_orm(table_name = "User")]
-#[schema(title = "User")]
-#[into_params(parameter_in = Query)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     #[serde(default)] // for skipping id in put request
@@ -28,7 +23,6 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub email: Option<String>,
     #[sea_orm(column_name = "emailVerified")]
-    #[schema(value_type = Option<String>, format = DateTime, nullable = true)]
     pub email_verified: Option<DateTimeWithTimeZone>,
     #[sea_orm(column_type = "Text", nullable)]
     pub image: Option<String>,

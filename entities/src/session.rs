@@ -2,22 +2,18 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use utoipa::{ToSchema, IntoParams};
 
 #[derive(
     Default,
     Serialize,
     Deserialize,
-    ToSchema,
     Clone,
     Debug,
     PartialEq,
     DeriveEntityModel,
     Eq,
-    IntoParams,
 )]
 #[sea_orm(table_name = "Session")]
-#[into_params(parameter_in = Query)]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,

@@ -8,12 +8,7 @@ use axum::{
     Form, Json,
 };
 use entities::{
-    account, session,
-    session::Model as Session,
-    user,
-    user::Model as User,
-    utoipa::{self, IntoParams, ToSchema},
-    verification_token,
+    account, session, session::Model as Session, user, user::Model as User, verification_token,
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, ModelTrait,
@@ -22,8 +17,7 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 
 /// Find a user in the database. If no query is provided, all users are returned.
-#[derive(Debug, Deserialize, IntoParams, ToSchema)]
-#[into_params(parameter_in = Query)]
+#[derive(Debug, Deserialize)]
 pub struct UserSearchQuery {
     /// Search by user's `id`.
     id: Option<String>,
@@ -35,26 +29,18 @@ pub struct UserSearchQuery {
     provider_account_id: Option<String>,
 }
 
-/// Create new User
-#[utoipa::path(
-        post,
-        path = "/users",
-        request_body = Model,
-        responses(
-            (status = 201, description = "User created successfully", body = Model),
-        )
-)]
 #[debug_handler]
 pub async fn create_user(
     State(state): State<Arc<DatabaseConnection>>,
     Json(payload): Json<user::Model>,
-) -> impl IntoResponse {
+) -> Result<Json<user::Model>, StatusCode> {
     let item: user::ActiveModel = payload.into();
-    if let Err(e) = item.insert(&*state).await {
-        eprintln!("{e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    } else {
-        StatusCode::CREATED
+    match item.insert(&*state).await {
+        Ok(value) => Ok(Json(value)),
+        Err(e) => {
+            eprintln!("{e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -65,17 +51,6 @@ pub enum UserResult {
     Multiple(Vec<user::Model>),
 }
 
-#[utoipa::path(
-        get,
-        path = "/users",
-        responses(
-            (status = 200, description = "OK"),
-            (status = 204, description = "User not found")
-        ),
-        params(
-            UserSearchQuery,
-        ),
-)]
 #[debug_handler]
 pub async fn get_users(
     State(state): State<Arc<DatabaseConnection>>,
@@ -186,21 +161,6 @@ pub async fn get_users(
     }
 }
 
-/// Update a user by given id.
-#[utoipa::path(
-    put,
-    path = "/users",
-    responses(
-        (status = 200, description = "User updated successfully"),
-        (status = 404, description = "User not found"),
-        (status = 422, description = "User id not provided"),
-        (status = 500, description = "Could not update user")
-    ),
-    params(
-        ("id" = String, Query, description = "User Id")
-    ),
-    request_body(content = Model, content_type = "application/x-www-form-urlencoded")
-)]
 pub async fn update_user(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
@@ -237,20 +197,6 @@ pub async fn update_user(
     }
 }
 
-/// Delete a user by given id.
-#[utoipa::path(
-    delete,
-    path = "/users",
-    responses(
-        (status = 200, description = "User deleted successfully"),
-        (status = 404, description = "User not found"),
-        (status = 422, description = "User id not provided"),
-        (status = 500, description = "Could not delete user")
-    ),
-    params(
-        ("id" = String, Query, description = "User Id")
-    ),
-)]
 pub async fn delete_user(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
@@ -275,15 +221,6 @@ pub async fn health() -> &'static str {
     "hello"
 }
 
-/// Create new Account
-#[utoipa::path(
-        post,
-        path = "/accounts",
-        request_body = Model,
-        responses(
-            (status = 201, description = "Account created successfully", body = Model),
-        )
-)]
 #[debug_handler]
 pub async fn create_account(
     State(state): State<Arc<DatabaseConnection>>,
@@ -298,21 +235,6 @@ pub async fn create_account(
     }
 }
 
-/// Delete an account
-#[utoipa::path(
-    delete,
-    path = "/accounts",
-    responses(
-        (status = 200, description = "Account deleted successfully"),
-        (status = 404, description = "Account not found"),
-        (status = 422, description = "Account provider id not provided"),
-        (status = 500, description = "Could not delete user")
-    ),
-    params(
-        ("name" = String, Query, description = "Provider name"),
-        ("id" = String, Query, description = "provider Account Id")
-    ),
-)]
 pub async fn delete_account(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
@@ -341,26 +263,19 @@ pub async fn delete_account(
     }
 }
 
-/// Create new Session
-#[utoipa::path(
-        post,
-        path = "/session",
-        request_body = Model,
-        responses(
-            (status = 201, description = "Session created successfully", body = Model),
-        )
-)]
 #[debug_handler]
 pub async fn create_session(
     State(state): State<Arc<DatabaseConnection>>,
     Json(payload): Json<session::Model>,
-) -> impl IntoResponse {
+) -> Result<Json<Session>, StatusCode> {
     let item: session::ActiveModel = payload.into();
-    if let Err(e) = item.insert(&*state).await {
-        eprintln!("{e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    } else {
-        StatusCode::CREATED
+
+    match item.insert(&*state).await {
+        Ok(value) => Ok(Json(value)),
+        Err(e) => {
+            eprintln!("{e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
@@ -370,19 +285,6 @@ pub struct UserAndSession {
     pub session: session::Model,
 }
 
-/// Get user and session by given session token.
-#[utoipa::path(
-    get,
-    path = "/session-user",
-    responses(
-        (status = 200, description = "Session and user found"),
-        (status = 422, description = "SessionToken not provided"),
-        (status = 500, description = "Could not get session and user")
-    ),
-    params(
-        ("sessionToken" = String, Query, description = "Session Token")
-    ),
-)]
 #[debug_handler]
 pub async fn get_session_and_user(
     Query(query): Query<HashMap<String, String>>,
@@ -411,21 +313,6 @@ pub async fn get_session_and_user(
     }
 }
 
-/// Update a user by given id.
-#[utoipa::path(
-    put,
-    path = "/session",
-    responses(
-        (status = 200, description = "Session updated successfully"),
-        (status = 404, description = "Session not found"),
-        (status = 422, description = "Session Token not provided"),
-        (status = 500, description = "Could not update session")
-    ),
-    params(
-        ("sessionToken" = String, Query, description = "Session Token")
-    ),
-    request_body(content = Model, content_type = "application/x-www-form-urlencoded")
-)]
 pub async fn update_session(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
@@ -433,9 +320,12 @@ pub async fn update_session(
 ) -> impl IntoResponse {
     println!("{query:#?}");
     if let Some(id) = query.get("id") {
-        if let Ok(Some(session)) = session::Entity::find_by_id(id).one(&*state).await {
+        if let Ok(Some(session)) = session::Entity::find()
+            .filter(session::Column::SessionToken.eq(id))
+            .one(&*state)
+            .await
+        {
             let mut session: session::ActiveModel = session.into();
-            session.id = Set(form.id);
             session.user_id = Set(form.user_id);
             session.expires = Set(form.expires);
             session.session_token = Set(form.session_token);
@@ -454,20 +344,6 @@ pub async fn update_session(
     }
 }
 
-/// Delete a session by given token.
-#[utoipa::path(
-    delete,
-    path = "/session",
-    responses(
-        (status = 200, description = "Session deleted successfully"),
-        (status = 404, description = "Session not found"),
-        (status = 422, description = "Session id not provided"),
-        (status = 500, description = "Could not delete session")
-    ),
-    params(
-        ("sessionToken" = String, Query, description = "Session Token")
-    ),
-)]
 pub async fn delete_session(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,
@@ -492,15 +368,6 @@ pub async fn delete_session(
     }
 }
 
-/// Create new Session
-#[utoipa::path(
-        post,
-        path = "/verification-token",
-        request_body = Model,
-        responses(
-            (status = 201, description = "Verification Token created successfully", body = Model),
-        )
-)]
 #[debug_handler]
 pub async fn create_verif_token(
     State(state): State<Arc<DatabaseConnection>>,
@@ -515,20 +382,6 @@ pub async fn create_verif_token(
     }
 }
 
-/// Delete a verification token by given id.
-#[utoipa::path(
-    delete,
-    path = "/verification-token",
-    responses(
-        (status = 200, description = "Verification Token deleted successfully"),
-        (status = 404, description = "Verification Token not found"),
-        (status = 422, description = "Verification Token id not provided"),
-        (status = 500, description = "Could not delete verification token")
-    ),
-    params(
-        ("id" = String, Query, description = "Verification Token Id")
-    ),
-)]
 pub async fn delete_verif_token(
     State(state): State<Arc<DatabaseConnection>>,
     Query(query): Query<HashMap<String, String>>,

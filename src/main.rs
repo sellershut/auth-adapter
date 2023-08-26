@@ -1,16 +1,12 @@
-mod open_api;
 mod routes;
 
 use axum::{
     routing::{get, post},
     Router,
 };
-use entities::utoipa::OpenApi;
 use sea_orm::Database;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::signal;
-
-use crate::open_api::ApiDoc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -20,10 +16,6 @@ async fn main() -> anyhow::Result<()> {
     let adapter = Arc::new(conn);
 
     let app = Router::new()
-        .merge(
-            utoipa_swagger_ui::SwaggerUi::new("/swagger-ui")
-                .url("/api-doc/openapi.json", ApiDoc::openapi()),
-        )
         .route("/health", get(routes::health))
         .route(
             "/users",
@@ -44,8 +36,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/verification-token",
-            post(routes::create_verif_token)
-                .delete(routes::delete_verif_token),
+            post(routes::create_verif_token).delete(routes::delete_verif_token),
         )
         .route("/session-user", get(routes::get_session_and_user))
         .with_state(adapter);

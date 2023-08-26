@@ -2,7 +2,6 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use utoipa::{IntoParams, ToSchema};
 
 #[derive(
     Serialize,
@@ -13,10 +12,7 @@ use utoipa::{IntoParams, ToSchema};
     DeriveEntityModel,
     Eq,
     Default,
-    ToSchema,
-    IntoParams,
 )]
-#[schema(title = "Account")]
 #[sea_orm(table_name = "Account")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]

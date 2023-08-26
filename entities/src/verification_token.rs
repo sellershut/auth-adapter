@@ -2,11 +2,8 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
-#[derive(
-    Default, Serialize, Deserialize, ToSchema, Clone, Debug, PartialEq, DeriveEntityModel, Eq,
-)]
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "VerificationToken")]
 pub struct Model {
     #[sea_orm(primary_key)]
